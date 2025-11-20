@@ -1,47 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Lock, Award, Download, User, FileText, Key } from 'lucide-react';
-
-// --- BASE DE DATOS MAESTRA (Fusionada JSON + CSV) ---
-const database = [
-  // --- PLAN PREMIUM & BÁSICO (Datos del CSV) ---
-  { nombre: "RAIZA DRILLETH PUPO OSORIO", tipoDoc: "T.I.", id: "1102830007", email: "raizadri3@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "05/11/2025" },
-  { nombre: "JOSÍAS ACUÑA ARIAS", tipoDoc: "T.I.", id: "1128327871", email: "josiasacunaarias919@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "05/11/2025" },
-  { nombre: "MARIA JOSE MARQUEZ", tipoDoc: "T.I.", id: "1054865663", email: "marquezzzz1013@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "05/11/2025" },
-  { nombre: "KATHERINE FERNANDEZ MONTILLA", tipoDoc: "T.I.", id: "1107070405", email: "kalefernandezm@gmail.com", plan: "Plan Premium", estado: "Activo", fechaPago: "06/11/2025" },
-  { nombre: "JUAN ESTEBAN HOME PAJOY", tipoDoc: "T.I.", id: "1077228978", email: "juanhome091215@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "06/11/2025" },
-  { nombre: "SANTIAGO CARRASQUILLA SUAZA", tipoDoc: "T.I.", id: "1063961186", email: "carrasantiago20@gmail.com", plan: "Plan Premium", estado: "Activo", fechaPago: "19/11/2025" },
-  { nombre: "SOPHIE ALEJANDRA SUÁREZ MANTILLA", tipoDoc: "T.I.", id: "1097502093", email: "dani.arias848@gmail.com", plan: "Plan Premium", estado: "Activo", fechaPago: "19/11/2025" },
-  { nombre: "VALENTINA SOFÍA MOLINA OSPINO", tipoDoc: "T.I.", id: "1082924186", email: "valentinamolina1911@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "19/11/2025" },
-  { nombre: "SARA QUINTERO CANO", tipoDoc: "T.I.", id: "1117018996", email: "lussara62@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "19/11/2025" },
-  { nombre: "LUIS FELIPE ESCUDERO VILLEGAS", tipoDoc: "T.I.", id: "1013126436", email: "luisfelipe788tam@gmail.com", plan: "Plan Premium", estado: "Activo", fechaPago: "19/11/2025" },
-
-  // --- NUEVOS INGRESOS (Datos del JSON Importado) ---
-  // Nota: Se asume T.I. y Plan Básico por defecto si no estaban en el CSV detallado
-  { nombre: "ANDERSON AMILKAR BECERRA IMBAJOA", tipoDoc: "T.I.", id: "1089486569", email: "amilkarbecerra05@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "Noviembre 2025" },
-  { nombre: "JOSE MIGUEL URREA GÓMEZ", tipoDoc: "T.I.", id: "1114882979", email: "urreamiguel695@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "Noviembre 2025" },
-  { nombre: "FRANKLIN AYALA PAVA", tipoDoc: "T.I.", id: "1067901714", email: "franklinayala02@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "Noviembre 2025" },
-  { nombre: "DAVID FELIPE MORALES RINCÓN", tipoDoc: "T.I.", id: "1052394278", email: "feliperincon1010@gmail.com", plan: "Plan Básico", estado: "Activo", fechaPago: "Noviembre 2025" },
-  // Puedes seguir pegando más estudiantes aquí siguiendo el mismo formato...
-];
+import { AlertCircle, CheckCircle, Lock, Award, Download, User, FileText, Key, ExternalLink, FolderOpen, FileSignature } from 'lucide-react';
 
 // --- RECURSOS GRÁFICOS ---
 const ASSETS = {
   fondo: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aOtHLJ5xUNkB12hj_FONDO.svg",
   logoSmall: "https://images.prismic.io/seamosgenios2026/aMSzIWGNHVfTPKS1_logosg.png?auto=format,compress",
-  logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg"
+  logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg",
+  formsUrl: "https://forms.gle/p1FnrAgDKcQkJDLw7"
 };
 
 export default function App() {
   const [formData, setFormData] = useState({
-    tipoDoc: 'T.I.', // Valor por defecto
+    tipoDoc: 'T.I.',
     numeroDoc: ''
   });
+
+  // Estado para la base de datos y la carga inicial
+  const [database, setDatabase] = useState([]);
+  const [isDbLoading, setIsDbLoading] = useState(true);
+  const [dbError, setDbError] = useState(false);
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // --- SEGURIDAD ---
+  // --- CARGAR BASE DE DATOS DESDE JSON EXTERNO ---
+  useEffect(() => {
+    // URL dinámica compatible con Vite moderno y GitHub Pages
+    const baseUrl = import.meta.env.BASE_URL;
+    const DB_URL = `${baseUrl}estudiantes.json`;
+    
+    console.log("Intentando cargar BD desde:", DB_URL); // Debug en consola
+
+    fetch(DB_URL)
+      .then(response => {
+        if (!response.ok) throw new Error("No se pudo conectar con la base de datos");
+        return response.json();
+      })
+      .then(data => {
+        setDatabase(data);
+        setIsDbLoading(false);
+      })
+      .catch(err => {
+        console.error("Error cargando datos:", err);
+        setDbError(true);
+        setIsDbLoading(false);
+      });
+  }, []);
+
+  // --- SEGURIDAD (Bloqueo Click Derecho) ---
   useEffect(() => {
     const handleContextMenu = (e) => e.preventDefault();
     const handleKeyDown = (e) => {
@@ -71,7 +78,7 @@ export default function App() {
     setResult(null);
 
     setTimeout(() => {
-      // Búsqueda flexible: Coincidencia de ID y Tipo de Documento
+      // Busca en la base de datos que acabamos de descargar (fetch)
       const found = database.find(item => 
         item.id === formData.numeroDoc.trim() && 
         item.tipoDoc === formData.tipoDoc
@@ -84,7 +91,7 @@ export default function App() {
             setResult(found);
         }
       } else {
-        setError("No encontramos registros con ese Tipo y Número de documento.");
+        setError("No encontramos registros con esos datos.");
       }
       setLoading(false);
     }, 1200);
@@ -116,11 +123,27 @@ export default function App() {
       {/* Main Content */}
       <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-4">
         
-        {!result && (
-          // El contenedor principal tiene la clase "group" para controlar animaciones internas al hacer hover
+        {/* Pantalla de Carga de BD Inicial */}
+        {isDbLoading && !result && (
+          <div className="animate-pulse text-center">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm text-blue-300 font-medium">Conectando con servidor...</p>
+          </div>
+        )}
+
+        {/* Error de Conexión BD */}
+        {dbError && (
+          <div className="bg-red-500/20 backdrop-blur border border-red-500/50 p-6 rounded-xl text-center max-w-md">
+             <AlertCircle className="mx-auto text-red-400 mb-2" size={32} />
+             <h3 className="text-white font-bold mb-1">Error de Conexión</h3>
+             <p className="text-red-200 text-sm">No pudimos cargar la lista de estudiantes. Por favor recarga la página.</p>
+          </div>
+        )}
+
+        {!result && !isDbLoading && !dbError && (
           <div className="w-full max-w-[320px] md:max-w-[360px] flex flex-col items-center animate-fade-in-up group perspective-1000">
             
-            {/* Logo Principal - Animado al hacer hover sobre TODO el grupo */}
+            {/* Logo Principal */}
             <div className="mb-3 transition-all duration-500 ease-out transform group-hover:scale-110 group-hover:-translate-y-2 drop-shadow-2xl">
               <img 
                 src={ASSETS.logoMain} 
@@ -129,7 +152,7 @@ export default function App() {
               />
             </div>
 
-            {/* Formulario - Animaciones de elevación y brillo neón */}
+            {/* Formulario */}
             <div className="w-full bg-slate-900/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_0_20px_rgba(255,255,255,0.1)] ring-1 ring-white/20 transition-all duration-500 ease-out transform group-hover:scale-[1.03] group-hover:shadow-[0_0_40px_rgba(59,130,246,0.3)] group-hover:border-white/80 group-hover:bg-slate-900/60">
               
               <div className="text-center mb-4">
@@ -139,8 +162,6 @@ export default function App() {
               </div>
 
               <form onSubmit={handleVerify} className="space-y-3">
-                
-                {/* Tipo Documento */}
                 <div className="relative group/input">
                    <select
                       name="tipoDoc"
@@ -159,7 +180,6 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Número Documento */}
                 <div className="relative group/input">
                     <input
                       type="text"
@@ -188,7 +208,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Error Flotante */}
             {error && !loading && (
               <div className="mt-4 bg-red-500/20 backdrop-blur-md border border-red-500/40 px-4 py-2 rounded-lg flex items-center gap-2 animate-shake shadow-[0_0_15px_rgba(239,68,68,0.4)]">
                 <AlertCircle className="text-red-300" size={14} />
@@ -200,12 +219,12 @@ export default function App() {
 
         {/* --- VISTA DE RESULTADOS --- */}
         {!loading && result && (
-          <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in-up">
+          <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in-up">
             
-            <div className="w-full max-w-3xl bg-slate-900 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-700 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+            <div className="w-full max-w-4xl bg-slate-900 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-700 overflow-hidden flex flex-col md:flex-row max-h-[95vh]">
               
-              {/* Panel Izquierdo */}
-              <div className={`md:w-2/5 p-6 flex flex-col justify-between relative overflow-hidden ${result.plan === 'Plan Premium' ? 'bg-gradient-to-br from-indigo-900 to-purple-900' : 'bg-gradient-to-br from-blue-900 to-slate-800'}`}>
+              {/* Panel Izquierdo (Bienvenida) */}
+              <div className={`md:w-1/3 p-6 flex flex-col justify-between relative overflow-hidden ${result.plan === 'Plan Premium' ? 'bg-gradient-to-br from-indigo-900 to-purple-900' : 'bg-gradient-to-br from-blue-900 to-slate-800'}`}>
                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/20 rounded-full blur-3xl"></div>
 
@@ -217,63 +236,102 @@ export default function App() {
                 </button>
 
                 <div className="flex flex-col items-center justify-center flex-grow text-center z-10 my-8 animate-float">
-                   <div className="bg-white/10 p-3 rounded-full mb-4 ring-1 ring-white/20 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                     {result.plan === 'Plan Premium' ? <Award className="text-yellow-400" size={32} /> : <CheckCircle className="text-blue-300" size={32} />}
+                   <div className="bg-white/10 p-4 rounded-full mb-4 ring-1 ring-white/20 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                     {result.plan === 'Plan Premium' ? <Award className="text-yellow-400" size={40} /> : <CheckCircle className="text-blue-300" size={40} />}
                    </div>
-                   <h2 className="text-xl font-bold text-white">Acceso Autorizado</h2>
-                   <p className="text-white/60 text-xs mt-2 px-4">Credencial válida para el ciclo académico 2025.</p>
+                   <h2 className="text-xl font-bold text-white">¡Hola, {result.nombre.split(" ")[0]}!</h2>
+                   <div className="mt-3 px-3 py-1 bg-white/10 rounded-full border border-white/10">
+                     <p className="text-white text-[10px] font-medium uppercase tracking-wide">{result.plan}</p>
+                   </div>
                 </div>
 
-                <div className="bg-black/20 rounded-lg p-3 border border-white/5 backdrop-blur-sm z-10">
-                   <p className="text-[9px] text-white/40 uppercase font-bold mb-1">ID Estudiante</p>
+                <div className="bg-black/20 rounded-lg p-3 border border-white/5 backdrop-blur-sm z-10 text-center">
+                   <p className="text-[9px] text-white/40 uppercase font-bold mb-1">Identificación</p>
                    <p className="text-base font-mono text-white tracking-widest">{result.id}</p>
                 </div>
               </div>
 
-              {/* Panel Derecho */}
-              <div className="md:w-3/5 p-6 bg-white overflow-y-auto">
-                <div className="mb-6">
-                  <h3 className="text-xl font-black text-slate-900 uppercase leading-tight">
+              {/* Panel Derecho (Contenido) */}
+              <div className="md:w-2/3 p-6 md:p-8 bg-white overflow-y-auto">
+                
+                <div className="mb-6 pb-6 border-b border-slate-100">
+                  <h3 className="text-xl font-black text-slate-900 uppercase leading-tight mb-2">
                     {result.nombre}
                   </h3>
-                  <p className="text-slate-500 text-xs mt-1 font-medium">{result.email}</p>
+                  
+                  {/* Alerta de Correo Importante */}
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg flex items-start gap-3">
+                    <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 mt-0.5">
+                      <User size={16} />
+                    </div>
+                    <div>
+                      <p className="text-blue-900 text-xs font-bold">Acceso Restringido</p>
+                      <p className="text-blue-800 text-xs mt-0.5 leading-relaxed">
+                        Debes iniciar sesión en Google Drive con: <br/>
+                        <span className="font-bold underline">{result.email}</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                      <span className="block text-[9px] font-bold text-slate-400 uppercase">Plan</span>
-                      <span className={`text-xs font-bold ${result.plan === 'Plan Premium' ? 'text-purple-700' : 'text-blue-700'}`}>{result.plan}</span>
-                   </div>
-                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                      <span className="block text-[9px] font-bold text-slate-400 uppercase">Estado</span>
-                      <span className="text-xs font-bold text-green-600 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> {result.estado}
-                      </span>
-                   </div>
-                </div>
+                <div className="space-y-6">
+                  
+                  {/* Sección de Botones de Acción */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Botón Carpeta */}
+                    <a 
+                      href={result.url_carpeta} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-6 rounded-xl transition-all group cursor-pointer text-center"
+                    >
+                      <div className="bg-indigo-100 p-3 rounded-full group-hover:scale-110 transition-transform">
+                        <FolderOpen size={28} className="text-indigo-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-indigo-900 font-bold text-sm">Material de Estudio</h4>
+                        <p className="text-indigo-600 text-[10px] mt-1">Ver mis documentos</p>
+                      </div>
+                      <ExternalLink size={12} className="text-indigo-400 absolute top-3 right-3" />
+                    </a>
 
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3 items-start mb-6 transition-all hover:shadow-md hover:scale-[1.01]">
-                   <Key className="text-amber-500 shrink-0 mt-0.5" size={18} />
-                   <div>
-                      <h4 className="text-amber-900 font-bold text-xs mb-1">Contraseña del Documento</h4>
-                      <p className="text-amber-800/70 text-[10px] mb-2">Para abrir el PDF, usa este número:</p>
-                      <div 
+                    {/* Botón Formulario */}
+                    <a 
+                      href={ASSETS.formsUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center gap-2 bg-green-50 hover:bg-green-100 border border-green-200 p-6 rounded-xl transition-all group cursor-pointer text-center"
+                    >
+                      <div className="bg-green-100 p-3 rounded-full group-hover:scale-110 transition-transform">
+                        <FileSignature size={28} className="text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-green-900 font-bold text-sm">Hoja de Respuestas</h4>
+                        <p className="text-green-600 text-[10px] mt-1">Responder simulacro</p>
+                      </div>
+                      <ExternalLink size={12} className="text-green-400 absolute top-3 right-3" />
+                    </a>
+                  </div>
+
+                  {/* Sección Contraseña (Informativa) */}
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3 items-center mt-2">
+                     <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
+                        <Key size={20} />
+                     </div>
+                     <div className="flex-1">
+                        <h4 className="text-amber-900 font-bold text-xs mb-0.5">Contraseña para abrir PDFs</h4>
+                        <p className="text-amber-800/70 text-[10px]">Tu clave es tu número de identificación:</p>
+                     </div>
+                     <div 
                         className="bg-white px-3 py-1.5 rounded border border-amber-200 inline-flex items-center gap-2 cursor-pointer hover:border-amber-400 hover:shadow-sm transition-all active:scale-95"
                         onClick={() => navigator.clipboard.writeText(result.id)}
                       >
                          <code className="font-mono font-bold text-slate-700 text-sm">{result.id}</code>
                          <span className="text-[9px] font-bold text-amber-500 uppercase">Copiar</span>
                       </div>
-                   </div>
-                </div>
+                  </div>
 
-                <button 
-                    onClick={() => alert(`Descargando...\nClave: ${result.id}`)}
-                    className="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-                  >
-                    <Download size={16} />
-                    Descargar PDF
-                </button>
+                </div>
               </div>
 
             </div>
