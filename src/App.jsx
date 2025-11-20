@@ -26,9 +26,10 @@ export default function App() {
 
   // --- CARGAR BASE DE DATOS DESDE JSON EXTERNO ---
   useEffect(() => {
-    // URL dinámica compatible con Vite moderno y GitHub Pages
-    const baseUrl = import.meta.env.BASE_URL;
-    const DB_URL = `${baseUrl}estudiantes.json`;
+    // CORRECCIÓN: Usamos una ruta relativa simple.
+    // Esto evita el error de "import.meta" en configuraciones antiguas de Vite.
+    // El navegador buscará el archivo en la misma carpeta donde está la página.
+    const DB_URL = './estudiantes.json';
     
     console.log("Intentando cargar BD desde:", DB_URL); // Debug en consola
 
