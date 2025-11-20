@@ -15,8 +15,4 @@ export default defineConfig({
   esbuild: {
     target: "esnext"
   }
-})git add .
-
-git commit -m "Ajuste de ruta absoluta final en Vite para despliegue"
-
-git push origin main
+})
