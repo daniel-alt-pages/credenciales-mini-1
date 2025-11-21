@@ -27,8 +27,11 @@ const cleanId = (id) => (!id ? "" : id.toString().replace(/[^a-zA-Z0-9]/g, ""));
 const utf8_to_b64 = (str) => window.btoa(unescape(encodeURIComponent(str)));
 
 export default function App() {
-  // --- ESTADOS GLOBALES ---
-  const [viewMode, setViewMode] = useState('student'); 
+  // --- ESTADOS GLOBALES Y PERSISTENCIA ---
+  // Inicializamos el estado leyendo del LocalStorage para no perder la sesión al recargar
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('sg_viewMode') || 'student'); 
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem('sg_adminToken') || '');
+
   const [database, setDatabase] = useState([]);
   const [originalDatabase, setOriginalDatabase] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -41,10 +44,10 @@ export default function App() {
   const [searchError, setSearchError] = useState('');
 
   // --- ESTADOS ADMIN ---
-  const [adminToken, setAdminToken] = useState('');
   const [adminView, setAdminView] = useState('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLetter, setFilterLetter] = useState('');
+  const [filterPlan, setFilterPlan] = useState('TODOS'); // NUEVO FILTRO DE PLAN
   const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'asc' });
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -53,7 +56,13 @@ export default function App() {
   const [jsonError, setJsonError] = useState('');
   const [saveMessage, setSaveMessage] = useState({ type: '', text: '' });
 
-  // Carga inicial
+  // Efecto para guardar la sesión cuando cambia
+  useEffect(() => {
+    localStorage.setItem('sg_viewMode', viewMode);
+    localStorage.setItem('sg_adminToken', adminToken);
+  }, [viewMode, adminToken]);
+
+  // Carga inicial de datos
   useEffect(() => {
     fetchData();
   }, []);
@@ -93,12 +102,21 @@ export default function App() {
   };
 
   const getFilteredAndSortedStudents = () => {
-    let filtered = database.filter(s => 
-      (s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.id.includes(searchTerm) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (filterLetter === '' || s.nombre.toUpperCase().startsWith(filterLetter))
-    );
+    let filtered = database.filter(s => {
+      // Filtro de texto (Nombre, ID, Email)
+      const matchesSearch = 
+        s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.id.includes(searchTerm) ||
+        s.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filtro de Letra
+      const matchesLetter = filterLetter === '' || s.nombre.toUpperCase().startsWith(filterLetter);
+      
+      // Filtro de Plan (NUEVO)
+      const matchesPlan = filterPlan === 'TODOS' || (s.plan && s.plan.toUpperCase().includes(filterPlan.toUpperCase()));
+
+      return matchesSearch && matchesLetter && matchesPlan;
+    });
 
     return filtered.sort((a, b) => {
       const valA = a[sortConfig.key] ? a[sortConfig.key].toString().toLowerCase() : '';
@@ -140,7 +158,6 @@ export default function App() {
          alert("¡Error! Ya existe otro estudiante con ese ID.");
          return;
       }
-      // Actualizar registro existente
       updatedDB = database.map(s => s === editingStudent ? newStudent : s);
     } else {
       if (database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
@@ -233,6 +250,13 @@ export default function App() {
     } else alert("Token inválido");
   };
 
+  const handleLogout = () => {
+    setViewMode('student');
+    setAdminToken('');
+    localStorage.removeItem('sg_viewMode');
+    localStorage.removeItem('sg_adminToken');
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -242,8 +266,8 @@ export default function App() {
 
   if (viewMode === 'login') {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 font-sans">
-        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] max-w-md w-full">
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4 font-sans">
+        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] w-full max-w-md">
           <div className="text-center mb-8">
             <div className="inline-flex p-4 bg-cyan-950/50 rounded-full mb-4 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/20"><Lock className="text-cyan-400" size={32} /></div>
             <h2 className="text-2xl font-bold text-white tracking-wide">ACCESO MAESTRO</h2>
@@ -264,24 +288,24 @@ export default function App() {
   if (viewMode === 'admin') {
     return (
       <div className="min-h-screen bg-slate-950 font-sans text-slate-200 flex flex-col">
-        <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-6 py-3 flex justify-between items-center">
+        <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-6 py-3 flex flex-wrap gap-4 justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-lg shadow-lg"><Database className="text-white" size={20}/></div>
             <div><h1 className="font-bold text-white tracking-wide text-sm md:text-base">PANEL DE CONTROL</h1></div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-auto">
             <div className="bg-slate-800 p-1 rounded-lg flex border border-slate-700">
               <button onClick={() => setAdminView('table')} className={`p-2 rounded-md transition-all ${adminView === 'table' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="Tabla"><LayoutList size={18}/></button>
               <button onClick={() => setAdminView('json')} className={`p-2 rounded-md transition-all ${adminView === 'json' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="JSON"><Code size={18}/></button>
             </div>
-            <button onClick={() => setViewMode('student')} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"><LogOut size={14}/> SALIR</button>
+            <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"><LogOut size={14}/> SALIR</button>
           </div>
         </header>
 
         {hasUnsavedChanges && (
-          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in">
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in sticky top-16 z-20 backdrop-blur-md">
             <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes de subida</span></div>
-            <button onClick={commitToGitHub} disabled={isSavingCloud} className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95">
+            <button onClick={commitToGitHub} disabled={isSavingCloud} className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95 w-full sm:w-auto justify-center">
               {isSavingCloud ? <Loader2 className="animate-spin" size={18}/> : <UploadCloud size={18}/>} GUARDAR EN NUBE
             </button>
           </div>
@@ -290,51 +314,72 @@ export default function App() {
         <main className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
           {adminView === 'table' && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                  <div><p className="text-slate-400 text-xs uppercase font-bold">Total</p><p className="text-2xl font-bold text-white">{stats.total}</p></div>
+              {/* Estadísticas Responsivas */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div><p className="text-slate-400 text-[10px] uppercase font-bold">Total</p><p className="text-2xl font-bold text-white">{stats.total}</p></div>
                   <Users className="text-blue-500" size={24} />
                 </div>
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                  <div><p className="text-slate-400 text-xs uppercase font-bold">Activos</p><p className="text-2xl font-bold text-emerald-400">{stats.active}</p></div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div><p className="text-slate-400 text-[10px] uppercase font-bold">Activos</p><p className="text-2xl font-bold text-emerald-400">{stats.active}</p></div>
                   <CheckCircle className="text-emerald-500" size={24} />
                 </div>
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                  <div><p className="text-slate-400 text-xs uppercase font-bold">Revocados</p><p className="text-2xl font-bold text-red-400">{stats.revoked}</p></div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div><p className="text-slate-400 text-[10px] uppercase font-bold">Revocados</p><p className="text-2xl font-bold text-red-400">{stats.revoked}</p></div>
                   <Ban className="text-red-500" size={24} />
                 </div>
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                  <div><p className="text-slate-400 text-xs uppercase font-bold">Premium</p><p className="text-2xl font-bold text-purple-400">{stats.premium}</p></div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div><p className="text-slate-400 text-[10px] uppercase font-bold">Premium</p><p className="text-2xl font-bold text-purple-400">{stats.premium}</p></div>
                   <Award className="text-purple-500" size={24} />
                 </div>
               </div>
 
+              {/* Filtros y Controles Responsivos */}
               <div className="flex flex-col gap-4">
-                <div className="flex gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-grow group">
                     <Search className="absolute left-3 top-3 text-slate-500 group-hover:text-cyan-400 transition-colors" size={18} />
                     <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-slate-200 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
-                  <button onClick={() => { setEditingStudent(null); setShowModal(true); }} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 whitespace-nowrap"><Plus size={18} /> <span className="hidden sm:inline">Nuevo</span></button>
+                  
+                  {/* Filtro de Plan */}
+                  <div className="relative min-w-[180px]">
+                    <Filter className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <select 
+                      value={filterPlan} 
+                      onChange={(e) => setFilterPlan(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 text-slate-300 cursor-pointer appearance-none"
+                    >
+                      <option value="TODOS">Todos los Planes</option>
+                      <option value="Premium">Plan Premium</option>
+                      <option value="Básico">Plan Básico</option>
+                    </select>
+                  </div>
+
+                  <button onClick={() => { setEditingStudent(null); setShowModal(true); }} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 whitespace-nowrap"><Plus size={18} /> <span className="inline">Nuevo</span></button>
                 </div>
-                <div className="flex flex-wrap gap-1 justify-center bg-slate-900 p-2 rounded-xl border border-slate-800">
-                  <button onClick={() => setFilterLetter('')} className={`px-2.5 py-1 text-xs font-bold rounded ${filterLetter === '' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>TODOS</button>
+
+                {/* Filtro A-Z con Scroll Horizontal */}
+                <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 overflow-x-auto flex gap-1 no-scrollbar">
+                  <button onClick={() => setFilterLetter('')} className={`px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap ${filterLetter === '' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>TODOS</button>
                   {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => (
-                    <button key={char} onClick={() => setFilterLetter(char)} className={`px-2 py-1 text-xs font-bold rounded ${filterLetter === char ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{char}</button>
+                    <button key={char} onClick={() => setFilterLetter(char)} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${filterLetter === char ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{char}</button>
                   ))}
                 </div>
               </div>
 
               <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-xs tracking-wider">
                       <tr>
                         <th className="p-4 w-12 text-center">#</th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('nombre')}>Estudiante <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('id')}>Doc <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('plan')}>Plan <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('estado')}>Estado <ArrowUpDown size={12} className="inline"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white group" onClick={() => handleSort('nombre')}>
+                          <div className="flex items-center gap-1">Estudiante <ArrowUpDown size={12} className="opacity-50 group-hover:opacity-100"/></div>
+                        </th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('id')}>Doc <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('plan')}>Plan <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('estado')}>Estado <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
                         <th className="p-4 font-bold text-right">Acciones</th>
                       </tr>
                     </thead>
@@ -370,8 +415,9 @@ export default function App() {
           )}
         </main>
 
+        {/* MODAL EDICIÓN */}
         {showModal && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">{editingStudent ? <Edit size={18}/> : <Plus size={18}/>} {editingStudent ? 'Editar' : 'Crear'}</h3>
@@ -400,8 +446,9 @@ export default function App() {
     );
   }
 
+  // 3. MODO ESTUDIANTE (Por defecto)
   return (
-    <div className="min-h-screen w-full font-sans text-slate-200 bg-[#0f172a] relative flex flex-col">
+    <div className="min-h-screen w-full font-sans text-slate-200 bg-[#0f172a] relative flex flex-col items-center justify-center">
       <div className="fixed inset-0 z-0 bg-cover bg-center opacity-40 md:opacity-60" style={{ backgroundImage: `url('${ASSETS.fondo}')` }} />
       <div className="fixed inset-0 z-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/90 pointer-events-none"></div>
 
@@ -418,7 +465,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="relative z-10 flex-grow flex flex-col items-center justify-center p-4 w-full">
+      <main className="relative z-10 flex flex-col items-center justify-center p-4 w-full max-w-4xl flex-grow">
         {!studentResult && (
           <div className="w-full max-w-sm md:max-w-md lg:max-w-lg flex flex-col items-center animate-fade-in-up">
             <div className="mb-8 md:mb-10 hover:scale-105 transition-transform duration-700 ease-out">
@@ -462,50 +509,48 @@ export default function App() {
         )}
 
         {studentResult && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/90 backdrop-blur-md animate-fade-in">
-            <div className="flex min-h-full items-center justify-center p-4 sm:p-6 text-center sm:text-left">
-              <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-slide-up">
-                <button onClick={() => {setStudentResult(null); setFormData({...formData, numeroDoc: ''});}} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white md:hidden backdrop-blur-sm transition-colors"><X size={20} /></button>
-                <div className={`md:w-2/5 p-8 md:p-10 flex flex-col justify-between relative overflow-hidden ${studentResult.plan.includes('Premium') ? 'bg-gradient-to-br from-[#2E1065] via-[#4C1D95] to-[#581C87] text-white' : 'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white'}`}>
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                  <div className="relative z-10">
-                    <button onClick={() => {setStudentResult(null); setFormData({...formData, numeroDoc: ''});}} className="hidden md:inline-flex items-center gap-2 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors mb-8 group"><span className="group-hover:-translate-x-1 transition-transform">←</span> Nueva Consulta</button>
-                    <div className="flex flex-col items-center text-center">
-                      <div className="inline-flex p-4 bg-white/10 rounded-full mb-6 backdrop-blur-md ring-1 ring-white/20 shadow-xl">
-                        {studentResult.plan.includes('Premium') ? <Award size={48} className="text-yellow-300" /> : <CheckCircle size={48} className="text-emerald-300" />}
-                      </div>
-                      <div className="px-4 py-1.5 bg-white/10 rounded-full border border-white/10 mb-4"><span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{studentResult.plan}</span></div>
-                      <h2 className="text-2xl sm:text-3xl font-bold mb-1 leading-tight">Hola, {studentResult.nombre.split(' ')[0]}</h2>
-                      <p className="text-white/60 text-sm">Bienvenido a tu espacio</p>
+          <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+            <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-slide-up min-h-0 my-auto">
+              <button onClick={() => {setStudentResult(null); setFormData({...formData, numeroDoc: ''});}} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white md:hidden backdrop-blur-sm transition-colors"><X size={20} /></button>
+              <div className={`md:w-2/5 p-8 md:p-10 flex flex-col justify-between relative overflow-hidden ${studentResult.plan.includes('Premium') ? 'bg-gradient-to-br from-[#2E1065] via-[#4C1D95] to-[#581C87] text-white' : 'bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white'}`}>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="relative z-10">
+                  <button onClick={() => {setStudentResult(null); setFormData({...formData, numeroDoc: ''});}} className="hidden md:inline-flex items-center gap-2 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors mb-8 group"><span className="group-hover:-translate-x-1 transition-transform">←</span> Nueva Consulta</button>
+                  <div className="flex flex-col items-center text-center">
+                    <div className="inline-flex p-4 bg-white/10 rounded-full mb-6 backdrop-blur-md ring-1 ring-white/20 shadow-xl">
+                      {studentResult.plan.includes('Premium') ? <Award size={48} className="text-yellow-300" /> : <CheckCircle size={48} className="text-emerald-300" />}
                     </div>
+                    <div className="px-4 py-1.5 bg-white/10 rounded-full border border-white/10 mb-4"><span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{studentResult.plan}</span></div>
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-1 leading-tight">Hola, {studentResult.nombre.split(' ')[0]}</h2>
+                    <p className="text-white/60 text-sm">Bienvenido a tu espacio</p>
                   </div>
-                  <div className="relative z-10 mt-10 md:mt-0"><div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/5"><p className="text-[10px] uppercase font-bold text-white/40 mb-1 tracking-wider">Identificación</p><p className="text-xl font-mono font-medium tracking-widest">{studentResult.id}</p></div></div>
                 </div>
-                <div className="md:w-3/5 p-8 md:p-10 bg-white text-slate-800">
-                  <div className="mb-8 pb-6 border-b border-slate-100">
-                    <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase leading-tight mb-4">{studentResult.nombre}</h3>
-                    <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border-l-4 border-blue-600">
-                      <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0"><User size={20} /></div>
-                      <div className="text-left"><p className="text-blue-900 text-xs font-bold uppercase tracking-wide">Cuenta de Acceso</p><p className="text-blue-700 text-sm mt-1 leading-relaxed">Para ver los archivos, debes iniciar sesión en Google con: <br/><span className="font-bold text-blue-900 select-all">{studentResult.email}</span></p></div>
-                    </div>
+                <div className="relative z-10 mt-10 md:mt-0"><div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/5"><p className="text-[10px] uppercase font-bold text-white/40 mb-1 tracking-wider">Identificación</p><p className="text-xl font-mono font-medium tracking-widest">{studentResult.id}</p></div></div>
+              </div>
+              <div className="md:w-3/5 p-8 md:p-10 bg-white text-slate-800 overflow-y-auto">
+                <div className="mb-6 border-b border-slate-100 pb-4">
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase leading-tight mb-4">{studentResult.nombre}</h3>
+                  <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border-l-4 border-blue-600">
+                    <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0"><User size={20} /></div>
+                    <div className="text-left"><p className="text-blue-900 text-xs font-bold uppercase tracking-wide">Cuenta de Acceso</p><p className="text-blue-700 text-sm mt-1 leading-relaxed">Para ver los archivos, debes iniciar sesión en Google con: <br/><span className="font-bold text-blue-900 select-all">{studentResult.email}</span></p></div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                    <a href={studentResult.url_carpeta} target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden bg-white border border-slate-200 hover:border-indigo-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1">
-                      <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink size={16} className="text-indigo-500" /></div>
-                      <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"><FolderOpen className="text-indigo-600" size={24} /></div>
-                      <h4 className="font-bold text-slate-800 text-sm">Material de Estudio</h4><p className="text-slate-500 text-xs mt-1">Ver carpeta en Drive</p>
-                    </a>
-                    <a href={ASSETS.formsUrl} target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden bg-white border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1">
-                      <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink size={16} className="text-emerald-500" /></div>
-                      <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"><FileSignature className="text-emerald-600" size={24} /></div>
-                      <h4 className="font-bold text-slate-800 text-sm">Hoja de Respuestas</h4><p className="text-slate-500 text-xs mt-1">Responder simulacro</p>
-                    </a>
-                  </div>
-                  <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                     <div className="bg-amber-100 p-3 rounded-full text-amber-600 shrink-0"><Key size={24} /></div>
-                     <div className="flex-1"><h4 className="text-amber-900 font-bold text-sm">Contraseña para documentos</h4><p className="text-amber-700/80 text-xs mt-0.5">Si un PDF te pide clave, usa tu número de identificación.</p></div>
-                     <button onClick={() => navigator.clipboard.writeText(studentResult.id)} className="bg-white hover:bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg text-amber-700 text-xs font-bold shadow-sm active:scale-95 transition-all">COPIAR CLAVE</button>
-                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                  <a href={studentResult.url_carpeta} target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden bg-white border border-slate-200 hover:border-indigo-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink size={16} className="text-indigo-500" /></div>
+                    <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"><FolderOpen className="text-indigo-600" size={24} /></div>
+                    <h4 className="font-bold text-slate-800 text-sm">Material de Estudio</h4><p className="text-slate-500 text-xs mt-1">Ver carpeta en Drive</p>
+                  </a>
+                  <a href={ASSETS.formsUrl} target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden bg-white border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink size={16} className="text-emerald-500" /></div>
+                    <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"><FileSignature className="text-emerald-600" size={24} /></div>
+                    <h4 className="font-bold text-slate-800 text-sm">Hoja de Respuestas</h4><p className="text-slate-500 text-xs mt-1">Responder simulacro</p>
+                  </a>
+                </div>
+                <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                   <div className="bg-amber-100 p-3 rounded-full text-amber-600 shrink-0"><Key size={24} /></div>
+                   <div className="flex-1"><h4 className="text-amber-900 font-bold text-sm">Contraseña para documentos</h4><p className="text-amber-700/80 text-xs mt-0.5">Si un PDF te pide clave, usa tu número de identificación.</p></div>
+                   <button onClick={() => navigator.clipboard.writeText(studentResult.id)} className="bg-white hover:bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg text-amber-700 text-xs font-bold shadow-sm active:scale-95 transition-all">COPIAR CLAVE</button>
                 </div>
               </div>
             </div>
