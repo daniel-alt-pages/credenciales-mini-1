@@ -273,7 +273,7 @@
         "nombre": "VIVIANGELIS PERALES COGOLLO",
         "tipoDoc": "T.I.",
         "id": "1049898959",
-        "email": "juanariasjj7789@gmail.com",
+        "email": "peralescogollo16@gmail.com",
         "plan": "Plan Básico",
         "estado": "Activo",
         "fechaPago": "18/11/2025",
@@ -308,5 +308,105 @@
         "estado": "Activo",
         "fechaPago": "20/11/2025",
         "url_carpeta": "https://drive.google.com/drive/folders/1uy4ZQz6uoNvBJk0x7g0vdtiDeJoUX91g"
+    },
+    {
+        "nombre": "STEPHANY VELAZCO RODRIGUEZ",
+        "tipoDoc": "T.I.",
+        "id": "1142715366",
+        "email": "sv273837@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "4/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1wjGgyxvJXH5tYxOZteuR14eKvgzg-60E"
+    },
+    {
+        "nombre": "SARITA SOFIA MALDONADO BARBOSA",
+        "tipoDoc": "CC",
+        "id": "1098664976",
+        "email": "saritaso1maldonado.b@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1gM7PpLKTGT9WBznYSpEp2n6ncY1DG5JM"
+    },
+    {
+        "nombre": "ASHLEY DANIELA DIAZ SEVERICHE",
+        "tipoDoc": "T.I.",
+        "id": "1100546372",
+        "email": "ashleyseveriche@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1As-9fz5XW8slb6-sB7x59WryyodJ_ZAX"
+    },
+    {
+        "nombre": "DANIEL ARCILA",
+        "tipoDoc": "CC",
+        "id": "1058843563",
+        "email": "danielarcilalopez4132@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/19CBxGhP0vj_yY3_0fi6aqGXiyNyerS4d"
+    },
+    {
+        "nombre": "SARAY VALENTINA CALDERÓN MARQUEZ",
+        "tipoDoc": "T.I.",
+        "id": "1063959762",
+        "email": "saraycalderonmarquez@gmail.com",
+        "plan": "Plan Básico",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1GBqEMtl2lOeJZHqWGZQOwg7uKkYgpXiy"
+    },
+    {
+        "nombre": "GONZALO ANDRÉS PRADA OTERO",
+        "tipoDoc": "T.I.",
+        "id": "1095310342",
+        "email": "gonzaloandresprada@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1uj8gWNTG9_vdxPdfUzQbpYyPMcnMX2av"
+    },
+    {
+        "nombre": "JUAN SEBASTIÁN MARTINEZ RIVEROS",
+        "tipoDoc": "T.I.",
+        "id": "1029663984",
+        "email": "martinezriverosjuan12@gmail.com",
+        "plan": "Plan Básico",
+        "estado": "Activo",
+        "fechaPago": "21/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1pKm0rmdnVjNcjb9h72SeDk15C4SuxHFW"
+    },
+    {
+        "nombre": "DANIELA ALEXANDRA VALENCIA ÁVILA",
+        "tipoDoc": "T.I.",
+        "id": "1081700288",
+        "email": "daniel4valenci4@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "19/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1AcfgGsF6AkBX3nAnjHSoEXzxEXB9hZhe"
+    },
+    {
+        "nombre": "MATÍAS JOSUÉ POLO MADERO",
+        "tipoDoc": "T.I.",
+        "id": "1.044.636.963",
+        "email": "polomaderomatias12@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "21/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/18oDcaJHUS6F5j687RdVpB1iwVtePMJ5U"
+    },
+    {
+        "nombre": "JUAN PABLO GÓMEZ SUÁREZ",
+        "tipoDoc": "T.I.",
+        "id": "1095309472",
+        "email": "gomezsuarez017@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "21/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1PJRzzGTczT54LrnXZ9AvQNTfiMeVYmrl"
     }
 ]
