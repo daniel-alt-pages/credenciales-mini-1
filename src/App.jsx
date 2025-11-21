@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   AlertCircle, CheckCircle, Lock, Award, User, FileText, Key, 
   FolderOpen, FileSignature, X, Search, Edit, Trash2, Plus, Save, 
-  LogOut, Database, Loader2, ExternalLink, Code, LayoutList, UploadCloud
+  LogOut, Database, Loader2, ExternalLink, Code, LayoutList, UploadCloud,
+  ArrowUpDown, Mail, Filter, Users, Ban
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -21,17 +22,15 @@ const ASSETS = {
   formsUrl: "https://forms.gle/p1FnrAgDKcQkJDLw7"
 };
 
-// Utilidad para limpiar ID (quita puntos, espacios)
+// Utilidades
 const cleanId = (id) => (!id ? "" : id.toString().replace(/[^a-zA-Z0-9]/g, ""));
-
-// Base64 seguro para UTF-8
 const utf8_to_b64 = (str) => window.btoa(unescape(encodeURIComponent(str)));
 
 export default function App() {
   // --- ESTADOS GLOBALES ---
   const [viewMode, setViewMode] = useState('student'); 
   const [database, setDatabase] = useState([]);
-  const [originalDatabase, setOriginalDatabase] = useState([]); // Para comparar cambios
+  const [originalDatabase, setOriginalDatabase] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   
@@ -43,13 +42,16 @@ export default function App() {
 
   // --- ESTADOS ADMIN ---
   const [adminToken, setAdminToken] = useState('');
-  const [adminView, setAdminView] = useState('table'); // 'table' o 'json'
+  const [adminView, setAdminView] = useState('table');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterLetter, setFilterLetter] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'asc' });
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [jsonContent, setJsonContent] = useState('');
   const [jsonError, setJsonError] = useState('');
+  const [saveMessage, setSaveMessage] = useState({ type: '', text: '' });
 
   // Carga inicial
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function App() {
       if (!response.ok) throw new Error("Error cargando datos");
       const data = await response.json();
       setDatabase(data);
-      setOriginalDatabase(JSON.parse(JSON.stringify(data))); // Copia profunda
+      setOriginalDatabase(JSON.parse(JSON.stringify(data)));
       setHasUnsavedChanges(false);
     } catch (err) {
       console.error(err);
@@ -72,15 +74,48 @@ export default function App() {
     }
   };
 
-  // ----------------------------------------------------
-  // LÓGICA DE GESTIÓN DE DATOS (LOCAL)
-  // ----------------------------------------------------
+  // --- ESTADÍSTICAS ---
+  const stats = {
+    total: database.length,
+    active: database.filter(s => s.estado === 'Activo').length,
+    revoked: database.filter(s => s.estado === 'Revocado').length,
+    pending: database.filter(s => s.estado === 'Pendiente').length,
+    premium: database.filter(s => s.plan && s.plan.includes('Premium')).length
+  };
 
-  // Actualizar la BD localmente (sin subir a GitHub aún)
+  // --- FILTRADO Y ORDENAMIENTO ---
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getFilteredAndSortedStudents = () => {
+    let filtered = database.filter(s => 
+      (s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.id.includes(searchTerm) ||
+      s.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (filterLetter === '' || s.nombre.toUpperCase().startsWith(filterLetter))
+    );
+
+    return filtered.sort((a, b) => {
+      const valA = a[sortConfig.key] ? a[sortConfig.key].toString().toLowerCase() : '';
+      const valB = b[sortConfig.key] ? b[sortConfig.key].toString().toLowerCase() : '';
+      
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const processedStudents = getFilteredAndSortedStudents();
+
+  // --- GESTIÓN LOCAL ---
   const updateLocalDatabase = (newData) => {
     setDatabase(newData);
     setHasUnsavedChanges(true);
-    // Actualizamos también el texto del editor JSON por si cambian de vista
     setJsonContent(JSON.stringify(newData, null, 2));
   };
 
@@ -91,7 +126,7 @@ export default function App() {
     const newStudent = {
       nombre: form.nombre.value.toUpperCase(),
       tipoDoc: form.tipoDoc.value,
-      id: form.id.value, // Permitimos editar ID para corregir errores
+      id: form.id.value,
       email: form.email.value,
       plan: form.plan.value,
       estado: form.estado.value,
@@ -101,18 +136,12 @@ export default function App() {
 
     let updatedDB;
     if (editingStudent) {
-      // Mantenemos el índice original o buscamos por ID antiguo si no cambió
-      updatedDB = database.map(s => (s.id === editingStudent.id && s.nombre === editingStudent.nombre) ? newStudent : s);
-      
-      // Si cambió el ID, hay que asegurar que no duplicamos uno existente
-      if (editingStudent.id !== newStudent.id) {
-         if (database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
-             alert("¡Error! Ya existe otro estudiante con ese ID.");
-             return;
-         }
-         // Si estamos editando el ID, buscamos el registro original para reemplazarlo
-         updatedDB = database.map(s => s === editingStudent ? newStudent : s);
+      if (editingStudent.id !== newStudent.id && database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
+         alert("¡Error! Ya existe otro estudiante con ese ID.");
+         return;
       }
+      // Actualizar registro existente
+      updatedDB = database.map(s => s === editingStudent ? newStudent : s);
     } else {
       if (database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
         alert("¡Error! Este ID ya existe.");
@@ -126,7 +155,7 @@ export default function App() {
   };
 
   const handleLocalDelete = (studentToDelete) => {
-    if (confirm(`¿Eliminar a ${studentToDelete.nombre}? (Se guardará localmente hasta que subas a la nube)`)) {
+    if (confirm(`¿Eliminar a ${studentToDelete.nombre}?`)) {
       const updatedDB = database.filter(s => s !== studentToDelete);
       updateLocalDatabase(updatedDB);
     }
@@ -145,44 +174,27 @@ export default function App() {
     }
   };
 
-  // ----------------------------------------------------
-  // LÓGICA DE PERSISTENCIA (GITHUB API)
-  // ----------------------------------------------------
-
+  // --- GITHUB API ---
   const commitToGitHub = async () => {
-    if (!confirm("¿Estás seguro de publicar estos cambios en la plataforma oficial?")) return;
-    
+    if (!confirm("¿Publicar cambios en la plataforma oficial?")) return;
     setIsSavingCloud(true);
     try {
-      // 1. Obtener SHA
       const getUrl = `https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.PATH}`;
-      const getRes = await fetch(getUrl, {
-        headers: { 'Authorization': `token ${adminToken}`, 'Accept': 'application/vnd.github.v3+json' }
-      });
+      const getRes = await fetch(getUrl, { headers: { 'Authorization': `token ${adminToken}`, 'Accept': 'application/vnd.github.v3+json' } });
       if (!getRes.ok) throw new Error("Error conectando con GitHub");
       const fileData = await getRes.json();
 
-      // 2. Guardar
       const contentEncoded = utf8_to_b64(JSON.stringify(database, null, 4));
       const putRes = await fetch(getUrl, {
         method: 'PUT',
-        headers: {
-          'Authorization': `token ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: "Actualización masiva desde Admin Panel",
-          content: contentEncoded,
-          sha: fileData.sha
-        })
+        headers: { 'Authorization': `token ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: "Update from Admin Panel", content: contentEncoded, sha: fileData.sha })
       });
 
       if (!putRes.ok) throw new Error("Error al escribir el archivo");
-
       setOriginalDatabase(JSON.parse(JSON.stringify(database)));
       setHasUnsavedChanges(false);
       alert("¡Cambios publicados con éxito!");
-
     } catch (error) {
       alert("Error: " + error.message);
     } finally {
@@ -190,43 +202,27 @@ export default function App() {
     }
   };
 
-  // ----------------------------------------------------
-  // LÓGICA ESTUDIANTE
-  // ----------------------------------------------------
+  // --- LÓGICA DE ACCESO ---
   const handleStudentVerify = (e) => {
     e.preventDefault();
     if (!formData.numeroDoc.trim()) return;
-
-    // Puerta trasera
     if (formData.numeroDoc.trim() === ADMIN_ACCESS_CODE) {
       setSearchLoading(true);
       setTimeout(() => { setSearchLoading(false); setViewMode('login'); setFormData({...formData, numeroDoc:''}); }, 1000);
       return;
     }
-
     setSearchLoading(true);
     setSearchError('');
     setStudentResult(null);
     const inputClean = cleanId(formData.numeroDoc);
-
     setTimeout(() => {
       const found = database.find(s => cleanId(s.id) === inputClean);
       if (found) {
-        if (found.estado?.toLowerCase() === "revocado") {
-          setSearchError("Tu credencial está inactiva.");
-        } else {
-          setStudentResult(found);
-        }
-      } else {
-        setSearchError("No se encontró ese número de documento.");
-      }
+        if (found.estado?.toLowerCase() === "revocado") setSearchError("Tu credencial está inactiva.");
+        else setStudentResult(found);
+      } else setSearchError("No se encontró ese número de documento.");
       setSearchLoading(false);
     }, 800);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAdminLogin = (e) => {
@@ -234,41 +230,30 @@ export default function App() {
     if (adminToken.startsWith('ghp_') || adminToken.startsWith('github_pat_')) {
       setViewMode('admin');
       setJsonContent(JSON.stringify(database, null, 2));
-    } else {
-      alert("Token inválido");
-    }
+    } else alert("Token inválido");
   };
 
-  const filteredStudents = database.filter(s => 
-    s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.id.includes(searchTerm) ||
-    s.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  // ----------------------------------------------------
-  // RENDERIZADO
-  // ----------------------------------------------------
+  // --- RENDERIZADO ---
 
-  // 1. LOGIN ADMIN
   if (viewMode === 'login') {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 font-sans">
         <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] max-w-md w-full">
           <div className="text-center mb-8">
-            <div className="inline-flex p-4 bg-cyan-950/50 rounded-full mb-4 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/20">
-              <Lock className="text-cyan-400" size={32} />
-            </div>
+            <div className="inline-flex p-4 bg-cyan-950/50 rounded-full mb-4 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/20"><Lock className="text-cyan-400" size={32} /></div>
             <h2 className="text-2xl font-bold text-white tracking-wide">ACCESO MAESTRO</h2>
-            <p className="text-cyan-200/60 text-sm mt-2">Introduce tu Token de GitHub</p>
           </div>
           <form onSubmit={handleAdminLogin} className="space-y-6">
             <div className="relative">
               <Key className="absolute left-4 top-3.5 text-cyan-600" size={20}/>
-              <input type="password" className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder:text-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all" placeholder="ghp_..." value={adminToken} onChange={(e) => setAdminToken(e.target.value)} autoFocus />
+              <input type="password" className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder:text-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all" placeholder="Token GitHub (ghp_...)" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} autoFocus />
             </div>
-            <button type="submit" className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">
-              AUTENTICAR
-            </button>
+            <button type="submit" className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">AUTENTICAR</button>
             <button type="button" onClick={() => setViewMode('student')} className="w-full text-slate-500 text-xs hover:text-white transition-colors">CANCELAR</button>
           </form>
         </div>
@@ -276,74 +261,68 @@ export default function App() {
     );
   }
 
-  // 2. PANEL ADMIN (CRUD + JSON)
   if (viewMode === 'admin') {
     return (
       <div className="min-h-screen bg-slate-950 font-sans text-slate-200 flex flex-col">
-        
-        {/* Navbar Admin */}
         <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-lg shadow-lg">
-              <Database className="text-white" size={20}/>
-            </div>
-            <div>
-              <h1 className="font-bold text-white tracking-wide text-sm md:text-base">PANEL DE CONTROL</h1>
-              <p className="text-[10px] text-slate-400">Modo Edición: {adminView === 'table' ? 'Visual' : 'Código'}</p>
-            </div>
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-lg shadow-lg"><Database className="text-white" size={20}/></div>
+            <div><h1 className="font-bold text-white tracking-wide text-sm md:text-base">PANEL DE CONTROL</h1></div>
           </div>
-          
           <div className="flex items-center gap-3">
             <div className="bg-slate-800 p-1 rounded-lg flex border border-slate-700">
-              <button onClick={() => setAdminView('table')} className={`p-2 rounded-md transition-all ${adminView === 'table' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="Vista Tabla"><LayoutList size={18}/></button>
-              <button onClick={() => setAdminView('json')} className={`p-2 rounded-md transition-all ${adminView === 'json' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="Vista JSON"><Code size={18}/></button>
+              <button onClick={() => setAdminView('table')} className={`p-2 rounded-md transition-all ${adminView === 'table' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="Tabla"><LayoutList size={18}/></button>
+              <button onClick={() => setAdminView('json')} className={`p-2 rounded-md transition-all ${adminView === 'json' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="JSON"><Code size={18}/></button>
             </div>
-            <button onClick={() => setViewMode('student')} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2">
-              <LogOut size={14}/> SALIR
-            </button>
+            <button onClick={() => setViewMode('student')} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"><LogOut size={14}/> SALIR</button>
           </div>
         </header>
 
-        {/* Barra de Estado "Cambios sin guardar" */}
         {hasUnsavedChanges && (
           <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in">
-            <div className="flex items-center gap-3 text-yellow-400">
-              <AlertCircle size={20} />
-              <span className="font-bold text-sm">¡Tienes cambios locales sin guardar en la nube!</span>
-            </div>
-            <button 
-              onClick={commitToGitHub}
-              disabled={isSavingCloud}
-              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg shadow-yellow-500/20 flex items-center gap-2 transition-all active:scale-95"
-            >
-              {isSavingCloud ? <Loader2 className="animate-spin" size={18}/> : <UploadCloud size={18}/>}
-              GUARDAR CAMBIOS EN LA NUBE
+            <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes de subida</span></div>
+            <button onClick={commitToGitHub} disabled={isSavingCloud} className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95">
+              {isSavingCloud ? <Loader2 className="animate-spin" size={18}/> : <UploadCloud size={18}/>} GUARDAR EN NUBE
             </button>
           </div>
         )}
 
-        <main className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full">
-          
-          {/* VISTA TABLA */}
+        <main className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
           {adminView === 'table' && (
             <>
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div className="relative w-full md:w-96 group">
-                  <Search className="absolute left-3 top-3 text-slate-500 group-hover:text-cyan-400 transition-colors" size={18} />
-                  <input 
-                    type="text" 
-                    placeholder="Filtrar estudiantes..." 
-                    className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-slate-200 transition-all"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                  <div><p className="text-slate-400 text-xs uppercase font-bold">Total</p><p className="text-2xl font-bold text-white">{stats.total}</p></div>
+                  <Users className="text-blue-500" size={24} />
                 </div>
-                <button 
-                  onClick={() => { setEditingStudent(null); setShowModal(true); }}
-                  className="w-full md:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
-                >
-                  <Plus size={18} /> AÑADIR ESTUDIANTE
-                </button>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                  <div><p className="text-slate-400 text-xs uppercase font-bold">Activos</p><p className="text-2xl font-bold text-emerald-400">{stats.active}</p></div>
+                  <CheckCircle className="text-emerald-500" size={24} />
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                  <div><p className="text-slate-400 text-xs uppercase font-bold">Revocados</p><p className="text-2xl font-bold text-red-400">{stats.revoked}</p></div>
+                  <Ban className="text-red-500" size={24} />
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                  <div><p className="text-slate-400 text-xs uppercase font-bold">Premium</p><p className="text-2xl font-bold text-purple-400">{stats.premium}</p></div>
+                  <Award className="text-purple-500" size={24} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-4">
+                  <div className="relative flex-grow group">
+                    <Search className="absolute left-3 top-3 text-slate-500 group-hover:text-cyan-400 transition-colors" size={18} />
+                    <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-slate-200 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  </div>
+                  <button onClick={() => { setEditingStudent(null); setShowModal(true); }} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 whitespace-nowrap"><Plus size={18} /> <span className="hidden sm:inline">Nuevo</span></button>
+                </div>
+                <div className="flex flex-wrap gap-1 justify-center bg-slate-900 p-2 rounded-xl border border-slate-800">
+                  <button onClick={() => setFilterLetter('')} className={`px-2.5 py-1 text-xs font-bold rounded ${filterLetter === '' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>TODOS</button>
+                  {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => (
+                    <button key={char} onClick={() => setFilterLetter(char)} className={`px-2 py-1 text-xs font-bold rounded ${filterLetter === char ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{char}</button>
+                  ))}
+                </div>
               </div>
 
               <div className="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 overflow-hidden">
@@ -351,43 +330,26 @@ export default function App() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-xs tracking-wider">
                       <tr>
-                        <th className="p-4 font-bold">Nombre / Email</th>
-                        <th className="p-4 font-bold">Documento</th>
-                        <th className="p-4 font-bold">Plan</th>
-                        <th className="p-4 font-bold">Estado</th>
+                        <th className="p-4 w-12 text-center">#</th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('nombre')}>Estudiante <ArrowUpDown size={12} className="inline"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('id')}>Doc <ArrowUpDown size={12} className="inline"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('plan')}>Plan <ArrowUpDown size={12} className="inline"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('estado')}>Estado <ArrowUpDown size={12} className="inline"/></th>
                         <th className="p-4 font-bold text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {filteredStudents.map((s, i) => (
-                        <tr key={i} className="hover:bg-slate-800/50 transition-colors group">
+                      {processedStudents.map((s, i) => (
+                        <tr key={s.id} className="hover:bg-slate-800/50 transition-colors group">
+                          <td className="p-4 text-center text-slate-600 font-mono text-xs">{i + 1}</td>
                           <td className="p-4">
                             <div className="font-bold text-white mb-0.5">{s.nombre}</div>
-                            <div className="text-slate-500 text-xs">{s.email}</div>
+                            <div className="text-slate-500 text-xs flex items-center gap-2">{s.email} <a href={`mailto:${s.email}`} className="text-blue-500 hover:text-blue-300"><Mail size={12}/></a></div>
                           </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] border border-slate-700">{s.tipoDoc}</span>
-                              <span className="font-mono text-cyan-300">{s.id}</span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${s.plan.includes('Premium') ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-blue-500/10 text-blue-300 border-blue-500/30'}`}>
-                              {s.plan}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className={`flex items-center gap-1.5 text-xs font-bold ${s.estado === 'Activo' ? 'text-emerald-400' : 'text-red-400'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${s.estado === 'Activo' ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
-                              {s.estado}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button onClick={() => { setEditingStudent(s); setShowModal(true); }} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors" title="Editar"><Edit size={16} /></button>
-                              <button onClick={() => handleLocalDelete(s)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Eliminar"><Trash2 size={16} /></button>
-                            </div>
-                          </td>
+                          <td className="p-4"><div className="flex items-center gap-2"><span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] border border-slate-700">{s.tipoDoc}</span><span className="font-mono text-cyan-300">{s.id}</span></div></td>
+                          <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${s.plan.includes('Premium') ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-blue-500/10 text-blue-300 border-blue-500/30'}`}>{s.plan}</span></td>
+                          <td className="p-4"><span className={`flex items-center gap-1.5 text-xs font-bold ${s.estado === 'Activo' ? 'text-emerald-400' : 'text-red-400'}`}><span className={`w-1.5 h-1.5 rounded-full ${s.estado === 'Activo' ? 'bg-emerald-400' : 'bg-red-400'}`}></span>{s.estado}</span></td>
+                          <td className="p-4 text-right"><div className="flex items-center justify-end gap-1"><button onClick={() => { setEditingStudent(s); setShowModal(true); }} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg" title="Editar"><Edit size={16} /></button><button onClick={() => handleLocalDelete(s)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg" title="Eliminar"><Trash2 size={16} /></button></div></td>
                         </tr>
                       ))}
                     </tbody>
@@ -397,89 +359,39 @@ export default function App() {
             </>
           )}
 
-          {/* VISTA JSON */}
           {adminView === 'json' && (
             <div className="h-[calc(100vh-140px)] flex flex-col">
               <div className="bg-slate-900 rounded-t-xl p-4 border border-slate-800 flex justify-between items-center">
                 <h3 className="text-slate-300 text-sm font-mono">estudiantes.json</h3>
                 {jsonError && <span className="text-red-400 text-xs font-bold bg-red-900/20 px-2 py-1 rounded">{jsonError}</span>}
               </div>
-              <textarea 
-                className={`w-full flex-grow bg-slate-950 text-slate-300 font-mono text-xs p-4 outline-none border border-t-0 ${jsonError ? 'border-red-500/50' : 'border-slate-800'} rounded-b-xl resize-none`}
-                value={jsonContent}
-                onChange={handleJsonChange}
-                spellCheck="false"
-              />
-              <p className="text-slate-500 text-xs mt-2 text-center">Edita el JSON directamente. Los cambios se validan en tiempo real.</p>
+              <textarea className={`w-full flex-grow bg-slate-950 text-slate-300 font-mono text-xs p-4 outline-none border border-t-0 ${jsonError ? 'border-red-500/50' : 'border-slate-800'} rounded-b-xl resize-none`} value={jsonContent} onChange={handleJsonChange} spellCheck="false" />
             </div>
           )}
         </main>
 
-        {/* MODAL EDICIÓN */}
         {showModal && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  {editingStudent ? <Edit size={18} className="text-blue-400"/> : <Plus size={18} className="text-emerald-400"/>} 
-                  {editingStudent ? 'Editar Estudiante' : 'Nuevo Registro'}
-                </h3>
-                <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">{editingStudent ? <Edit size={18}/> : <Plus size={18}/>} {editingStudent ? 'Editar' : 'Crear'}</h3>
+                <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
               </div>
-              
               <div className="p-6 overflow-y-auto custom-scrollbar">
                 <form id="studentForm" onSubmit={handleLocalSaveStudent} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Nombre Completo</label>
-                    <input name="nombre" required defaultValue={editingStudent?.nombre} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 uppercase font-bold" placeholder="NOMBRE APELLIDO" />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Tipo Doc</label>
-                    <select name="tipoDoc" defaultValue={editingStudent?.tipoDoc || "T.I."} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 cursor-pointer">
-                      <option>T.I.</option><option>C.C.</option><option>C.E.</option><option>PPT</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Número ID (Sin Puntos)</label>
-                    <input name="id" required defaultValue={editingStudent?.id} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-cyan-300 font-mono outline-none focus:border-cyan-500" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Email</label>
-                    <input name="email" type="email" required defaultValue={editingStudent?.email} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Plan</label>
-                    <select name="plan" defaultValue={editingStudent?.plan || "Plan Básico"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 cursor-pointer">
-                      <option>Plan Básico</option><option>Plan Premium</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Estado</label>
-                    <select name="estado" defaultValue={editingStudent?.estado || "Activo"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 cursor-pointer">
-                      <option>Activo</option><option>Revocado</option><option>Pendiente</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Fecha Pago</label>
-                    <input name="fechaPago" defaultValue={editingStudent?.fechaPago} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">URL Carpeta</label>
-                    <input name="url_carpeta" defaultValue={editingStudent?.url_carpeta} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-blue-400 text-xs outline-none focus:border-blue-500" />
-                  </div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Nombre</label><input name="nombre" required defaultValue={editingStudent?.nombre} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white uppercase font-bold focus:border-blue-500 outline-none" /></div>
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Tipo Doc</label><select name="tipoDoc" defaultValue={editingStudent?.tipoDoc || "T.I."} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>T.I.</option><option>C.C.</option><option>C.E.</option><option>PPT</option></select></div>
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">ID (Sin Puntos)</label><input name="id" required defaultValue={editingStudent?.id} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-cyan-300 font-mono focus:border-cyan-500 outline-none" /></div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Email</label><input name="email" type="email" required defaultValue={editingStudent?.email} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none" /></div>
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Plan</label><select name="plan" defaultValue={editingStudent?.plan || "Plan Básico"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>Plan Básico</option><option>Plan Premium</option></select></div>
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Estado</label><select name="estado" defaultValue={editingStudent?.estado || "Activo"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>Activo</option><option>Revocado</option><option>Pendiente</option></select></div>
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Fecha Pago</label><input name="fechaPago" defaultValue={editingStudent?.fechaPago} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none" /></div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">URL Carpeta</label><input name="url_carpeta" defaultValue={editingStudent?.url_carpeta} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-blue-400 text-xs outline-none" /></div>
                 </form>
               </div>
-
               <div className="p-5 border-t border-slate-800 bg-slate-950/30 flex justify-end gap-3">
-                <button onClick={() => setShowModal(false)} className="px-5 py-2.5 text-slate-400 font-bold hover:text-white hover:bg-slate-800 rounded-xl transition-colors text-sm">Cancelar</button>
-                <button type="submit" form="studentForm" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all text-sm">Confirmar Edición Local</button>
+                <button onClick={() => setShowModal(false)} className="px-5 py-2.5 text-slate-400 font-bold hover:text-white hover:bg-slate-800 rounded-xl">Cancelar</button>
+                <button type="submit" form="studentForm" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg">Confirmar</button>
               </div>
             </div>
           </div>
@@ -488,7 +400,6 @@ export default function App() {
     );
   }
 
-  // 3. MODO ESTUDIANTE (Original y Estilizado)
   return (
     <div className="min-h-screen w-full font-sans text-slate-200 bg-[#0f172a] relative flex flex-col">
       <div className="fixed inset-0 z-0 bg-cover bg-center opacity-40 md:opacity-60" style={{ backgroundImage: `url('${ASSETS.fondo}')` }} />
@@ -514,7 +425,6 @@ export default function App() {
               <img src={ASSETS.logoMain} alt="Seamos Genios Logo" className="w-40 md:w-56 lg:w-64 h-auto mx-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]" />
             </div>
             <div className="w-full bg-slate-900/60 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl ring-1 ring-white/5 relative overflow-hidden group">
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-colors duration-1000"></div>
               <div className="relative z-10 text-center mb-6">
                 <h1 className="text-lg md:text-xl font-bold text-white tracking-tight">Consulta de Credenciales</h1>
                 <p className="text-slate-400 text-xs md:text-sm mt-1">Ingresa tus datos para acceder al material</p>
