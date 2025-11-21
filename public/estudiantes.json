@@ -308,5 +308,65 @@
         "estado": "Activo",
         "fechaPago": "20/11/2025",
         "url_carpeta": "https://drive.google.com/drive/folders/1uy4ZQz6uoNvBJk0x7g0vdtiDeJoUX91g"
+    },
+    {
+        "nombre": "STEPHANY VELAZCO RODRIGUEZ",
+        "tipoDoc": "T.I.",
+        "id": "1142715366",
+        "email": "sv273837@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "4/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1wjGgyxvJXH5tYxOZteuR14eKvgzg-60E"
+    },
+    {
+        "nombre": "SARITA SOFIA MALDONADO BARBOSA",
+        "tipoDoc": "CC",
+        "id": "1098664976",
+        "email": "saritaso1maldonado.b@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1gM7PpLKTGT9WBznYSpEp2n6ncY1DG5JM"
+    },
+    {
+        "nombre": "ASHLEY DANIELA DIAZ SEVERICHE",
+        "tipoDoc": "T.I.",
+        "id": "1100546372",
+        "email": "ashleyseveriche@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1As-9fz5XW8slb6-sB7x59WryyodJ_ZAX"
+    },
+    {
+        "nombre": "DANIEL ARCILA",
+        "tipoDoc": "CC",
+        "id": "1058843563",
+        "email": "danielarcilalopez4132@gmail.com",
+        "plan": "Plan Intermedio",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/19CBxGhP0vj_yY3_0fi6aqGXiyNyerS4d"
+    },
+    {
+        "nombre": "SARAY VALENTINA CALDERÓN MARQUEZ",
+        "tipoDoc": "T.I.",
+        "id": "1063959762",
+        "email": "saraycalderonmarquez@gmail.com",
+        "plan": "Plan Básico",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1GBqEMtl2lOeJZHqWGZQOwg7uKkYgpXiy"
+    },
+    {
+        "nombre": "GONZALO ANDRÉS PRADA OTERO",
+        "tipoDoc": "T.I.",
+        "id": "1095310342",
+        "email": "gonzaloandresprada@gmail.com",
+        "plan": "Plan Premium",
+        "estado": "Activo",
+        "fechaPago": "20/11/2025",
+        "url_carpeta": "https://drive.google.com/drive/folders/1uj8gWNTG9_vdxPdfUzQbpYyPMcnMX2av"
     }
 ]
