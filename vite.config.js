@@ -16,3 +16,5 @@ export default defineConfig({
     target: "esnext"
   }
 })
+
+// Actualizacion forzada
