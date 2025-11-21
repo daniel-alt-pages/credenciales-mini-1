@@ -26,9 +26,6 @@ export default function App() {
 
   // --- CARGAR BASE DE DATOS DESDE JSON EXTERNO ---
   useEffect(() => {
-    // CORRECCIÓN: Usamos una ruta relativa simple.
-    // Esto evita el error de "import.meta" en configuraciones antiguas de Vite.
-    // El navegador buscará el archivo en la misma carpeta donde está la página.
     const DB_URL = './estudiantes.json';
     
     console.log("Intentando cargar BD desde:", DB_URL); // Debug en consola
@@ -79,10 +76,10 @@ export default function App() {
     setResult(null);
 
     setTimeout(() => {
-      // Busca en la base de datos que acabamos de descargar (fetch)
+      // CORRECCIÓN CLAVE: Hacemos la comparación de tipoDoc insensible a mayúsculas/minúsculas
       const found = database.find(item => 
         item.id === formData.numeroDoc.trim() && 
-        item.tipoDoc === formData.tipoDoc
+        item.tipoDoc.toUpperCase() === formData.tipoDoc.toUpperCase()
       );
       
       if (found) {
