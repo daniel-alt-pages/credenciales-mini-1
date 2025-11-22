@@ -3,8 +3,7 @@ import {
   AlertCircle, CheckCircle, Lock, Award, User, FileText, Key, 
   FolderOpen, FileSignature, X, Search, Edit, Trash2, Plus, Save, 
   LogOut, Database, Loader2, ExternalLink, Code, LayoutList, UploadCloud,
-  ArrowUpDown, Mail, Filter, Users, Ban, Sparkles, BookOpen, GraduationCap,
-  Activity, Zap
+  ArrowUpDown, Mail, Filter, Users, Ban, Sparkles, BookOpen, Zap, Activity
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -20,23 +19,18 @@ const ASSETS = {
   fondo: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aOtHLJ5xUNkB12hj_FONDO.svg",
   logoSmall: "https://images.prismic.io/seamosgenios2026/aMSzIWGNHVfTPKS1_logosg.png?auto=format,compress",
   logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg",
-  // Enlaces base (se pueden personalizar por asignatura)
+  // Enlace general (fallback)
   formsBaseUrl: "https://forms.gle/p1FnrAgDKcQkJDLw7", 
 };
 
-// Lista de Asignaturas para el Modal
+// ASIGNATURAS PARA EL MODAL
 const ASIGNATURAS = [
-  { id: 'math', name: 'Matemáticas', icon: <Activity size={20}/>, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { id: 'lectura', name: 'Lectura Crítica', icon: <BookOpen size={20}/>, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  { id: 'sociales', name: 'Competencias Ciudadanas', icon: <Users size={20}/>, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
-  { id: 'naturales', name: 'Ciencias Naturales', icon: <Zap size={20}/>, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { id: 'ingles', name: 'Inglés', icon: <Globe size={20}/>, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
+  { id: 'math', name: 'Matemáticas', icon: <Activity size={20}/>, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', link: ASSETS.formsBaseUrl },
+  { id: 'lectura', name: 'Lectura Crítica', icon: <BookOpen size={20}/>, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', link: ASSETS.formsBaseUrl },
+  { id: 'sociales', name: 'Competencias Ciudadanas', icon: <Users size={20}/>, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', link: ASSETS.formsBaseUrl },
+  { id: 'naturales', name: 'Ciencias Naturales', icon: <Zap size={20}/>, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', link: ASSETS.formsBaseUrl },
+  { id: 'ingles', name: 'Inglés', icon: <Sparkles size={20}/>, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', link: ASSETS.formsBaseUrl },
 ];
-
-// Componente Icono Globo para Inglés (si no existe en lucide lite)
-const Globe = ({size, className}) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-);
 
 // Utilidades
 const cleanId = (id) => (!id ? "" : id.toString().replace(/[^a-zA-Z0-9]/g, ""));
@@ -57,7 +51,6 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [showSubjectModal, setShowSubjectModal] = useState(false); // Modal Asignaturas
-  const [selectedAction, setSelectedAction] = useState(null); // 'material' o 'simulacro'
 
   // --- ESTADOS ADMIN ---
   const [adminView, setAdminView] = useState('table');
@@ -82,7 +75,7 @@ export default function App() {
     fetchData();
   }, []);
 
-  // --- EFECTO ESTELA MOUSE (FUTURISTA) ---
+  // EFECTO ESTELA MOUSE
   const cursorRef = useRef(null);
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -225,15 +218,19 @@ export default function App() {
   const handleStudentVerify = (e) => {
     e.preventDefault();
     if (!formData.numeroDoc.trim()) return;
+    
+    // Puerta trasera Admin
     if (formData.numeroDoc.trim() === ADMIN_ACCESS_CODE) {
       setSearchLoading(true);
       setTimeout(() => { setSearchLoading(false); setViewMode('login'); setFormData({...formData, numeroDoc:''}); }, 1000);
       return;
     }
+
     setSearchLoading(true);
     setSearchError('');
     setStudentResult(null);
     const inputClean = cleanId(formData.numeroDoc);
+    
     setTimeout(() => {
       const found = database.find(s => cleanId(s.id) === inputClean);
       if (found) {
@@ -242,21 +239,6 @@ export default function App() {
       } else setSearchError("No se encontró ese número de documento.");
       setSearchLoading(false);
     }, 800);
-  };
-
-  const handleSubjectSelection = (subjectId) => {
-    // Aquí se puede lógica para redirigir a formularios específicos
-    // Por ahora usamos el link general o uno específico si existiera
-    let url = ASSETS.formsBaseUrl;
-    // if (subjectId === 'math') url = "URL_MATEMATICAS";
-    
-    window.open(url, '_blank');
-    setShowSubjectModal(false);
-  };
-
-  const handleOpenSubjectModal = (action) => {
-    setSelectedAction(action);
-    setShowSubjectModal(true);
   };
 
   const handleAdminLogin = (e) => {
@@ -298,7 +280,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 font-sans relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] max-w-md w-full relative z-10">
+        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] max-w-md w-full relative z-10 animate-fade-in">
           <div className="text-center mb-8">
             <div className="inline-flex p-4 bg-cyan-950/50 rounded-full mb-4 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/20 animate-pulse"><Lock className="text-cyan-400" size={32} /></div>
             <h2 className="text-2xl font-bold text-white tracking-wide">ACCESO MAESTRO</h2>
@@ -335,7 +317,7 @@ export default function App() {
 
         {hasUnsavedChanges && (
           <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in sticky top-16 z-20 backdrop-blur-md">
-            <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes de subida</span></div>
+            <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes</span></div>
             <button onClick={commitToGitHub} disabled={isSavingCloud} className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95 w-full sm:w-auto justify-center">
               {isSavingCloud ? <Loader2 className="animate-spin" size={18}/> : <UploadCloud size={18}/>} GUARDAR EN NUBE
             </button>
@@ -479,7 +461,6 @@ export default function App() {
       {/* Fondo y Estela */}
       <div className="fixed inset-0 z-0 bg-cover bg-center opacity-40 md:opacity-60" style={{ backgroundImage: `url('${ASSETS.fondo}')` }} />
       <div className="fixed inset-0 z-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/90 pointer-events-none"></div>
-      {/* Estela Mouse (solo escritorio) */}
       <div ref={cursorRef} className="fixed w-64 h-64 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none z-0 transform -translate-x-1/2 -translate-y-1/2 hidden md:block transition-transform duration-100"></div>
 
       <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-900/70 border-b border-white/5 shadow-lg">
@@ -577,7 +558,7 @@ export default function App() {
                   </a>
 
                   {/* BOTÓN SIMULACRO CON MODAL */}
-                  <button onClick={() => handleOpenSubjectModal('simulacro')} className="group relative overflow-hidden bg-white border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 text-left">
+                  <button onClick={() => setShowSubjectModal(true)} className="group relative overflow-hidden bg-white border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 text-left">
                     <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink size={16} className="text-emerald-500" /></div>
                     <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"><FileSignature className="text-emerald-600" size={24} /></div>
                     <h4 className="font-bold text-slate-800 text-sm">Hoja de Respuestas</h4><p className="text-slate-500 text-xs mt-1">Responder simulacro</p>
@@ -614,10 +595,12 @@ export default function App() {
               </div>
               <div className="p-6 grid grid-cols-1 gap-3">
                 {ASIGNATURAS.map((subject) => (
-                  <button 
+                  <a 
                     key={subject.id}
-                    onClick={() => handleSubjectSelection(subject.id)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:shadow-md group active:scale-95 ${subject.bg} ${subject.border} hover:bg-white`}
+                    href={subject.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:shadow-md group active:scale-95 ${subject.bg} ${subject.border} hover:bg-white cursor-pointer`}
                   >
                     <div className={`p-3 rounded-full bg-white shadow-sm ${subject.color}`}>{subject.icon}</div>
                     <div className="text-left">
@@ -625,7 +608,7 @@ export default function App() {
                       <p className="text-xs text-slate-500">Ir al formulario oficial</p>
                     </div>
                     <ExternalLink size={16} className="ml-auto text-slate-300 group-hover:text-indigo-400"/>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
