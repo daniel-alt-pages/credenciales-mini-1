@@ -247,7 +247,7 @@ export default function App() {
   const handleSubjectSelection = (subjectId) => {
     // Aquí se puede lógica para redirigir a formularios específicos
     // Por ahora usamos el link general o uno específico si existiera
-    let url = ASSETS.formsUrl;
+    let url = ASSETS.formsBaseUrl;
     // if (subjectId === 'math') url = "URL_MATEMATICAS";
     
     window.open(url, '_blank');
@@ -265,6 +265,31 @@ export default function App() {
       setViewMode('admin');
       setJsonContent(JSON.stringify(database, null, 2));
     } else alert("Token inválido");
+  };
+
+  const handleLogout = () => {
+    setViewMode('student');
+    setAdminToken('');
+    localStorage.removeItem('sg_viewMode');
+    localStorage.removeItem('sg_adminToken');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleJsonChange = (e) => {
+    const val = e.target.value;
+    setJsonContent(val);
+    try {
+      const parsed = JSON.parse(val);
+      setDatabase(parsed);
+      setHasUnsavedChanges(true);
+      setJsonError('');
+    } catch (err) {
+      setJsonError('JSON Inválido: ' + err.message);
+    }
   };
 
   // --- RENDERIZADO ---
@@ -300,13 +325,17 @@ export default function App() {
             <div><h1 className="font-bold text-white tracking-wide text-sm md:text-base">PANEL DE CONTROL</h1></div>
           </div>
           <div className="flex items-center gap-3 ml-auto">
-            <button onClick={() => setViewMode('student')} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"><LogOut size={14}/> SALIR</button>
+            <div className="bg-slate-800 p-1 rounded-lg flex border border-slate-700">
+              <button onClick={() => setAdminView('table')} className={`p-2 rounded-md transition-all ${adminView === 'table' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="Tabla"><LayoutList size={18}/></button>
+              <button onClick={() => setAdminView('json')} className={`p-2 rounded-md transition-all ${adminView === 'json' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`} title="JSON"><Code size={18}/></button>
+            </div>
+            <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"><LogOut size={14}/> SALIR</button>
           </div>
         </header>
 
         {hasUnsavedChanges && (
           <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 animate-fade-in sticky top-16 z-20 backdrop-blur-md">
-            <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes</span></div>
+            <div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><span className="font-bold text-sm">Cambios locales pendientes de subida</span></div>
             <button onClick={commitToGitHub} disabled={isSavingCloud} className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95 w-full sm:w-auto justify-center">
               {isSavingCloud ? <Loader2 className="animate-spin" size={18}/> : <UploadCloud size={18}/>} GUARDAR EN NUBE
             </button>
@@ -371,10 +400,12 @@ export default function App() {
                     <thead className="bg-slate-950 text-slate-400 uppercase text-xs tracking-wider">
                       <tr>
                         <th className="p-4 w-12 text-center">#</th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('nombre')}>Estudiante <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('id')}>Doc <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('plan')}>Plan <ArrowUpDown size={12} className="inline"/></th>
-                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('estado')}>Estado <ArrowUpDown size={12} className="inline"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white group" onClick={() => handleSort('nombre')}>
+                          <div className="flex items-center gap-1">Estudiante <ArrowUpDown size={12} className="opacity-50 group-hover:opacity-100"/></div>
+                        </th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('id')}>Doc <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('plan')}>Plan <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
+                        <th className="p-4 font-bold cursor-pointer hover:text-white" onClick={() => handleSort('estado')}>Estado <ArrowUpDown size={12} className="inline opacity-50 hover:opacity-100"/></th>
                         <th className="p-4 font-bold text-right">Acciones</th>
                       </tr>
                     </thead>
@@ -398,9 +429,19 @@ export default function App() {
               </div>
             </>
           )}
+
+          {adminView === 'json' && (
+            <div className="h-[calc(100vh-140px)] flex flex-col">
+              <div className="bg-slate-900 rounded-t-xl p-4 border border-slate-800 flex justify-between items-center">
+                <h3 className="text-slate-300 text-sm font-mono">estudiantes.json</h3>
+                {jsonError && <span className="text-red-400 text-xs font-bold bg-red-900/20 px-2 py-1 rounded">{jsonError}</span>}
+              </div>
+              <textarea className={`w-full flex-grow bg-slate-950 text-slate-300 font-mono text-xs p-4 outline-none border border-t-0 ${jsonError ? 'border-red-500/50' : 'border-slate-800'} rounded-b-xl resize-none`} value={jsonContent} onChange={handleJsonChange} spellCheck="false" />
+            </div>
+          )}
         </main>
 
-        {/* MODAL EDICIÓN/CREACIÓN */}
+        {/* MODAL EDICIÓN */}
         {showModal && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
@@ -444,9 +485,9 @@ export default function App() {
       <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-900/70 border-b border-white/5 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <img src={ASSETS.logoSmall} alt="Logo" className="h-8 w-auto object-contain drop-shadow-md" />
+            <img src={ASSETS.logoSmall} alt="Logo" className="h-8 md:h-12 w-auto object-contain drop-shadow-md" />
             <div className="h-5 w-px bg-white/20 mx-1 hidden sm:block"></div>
-            <span className="text-sm md:text-base font-bold tracking-wide text-white/90 uppercase hidden sm:block">Plataforma Estudiantil</span>
+            <span className="text-sm md:text-lg font-bold tracking-wide text-white/90 uppercase hidden sm:block">Plataforma Estudiantil</span>
           </div>
           <div className="flex items-center gap-2 text-[10px] md:text-xs font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
             <Lock size={10} className="md:w-3 md:h-3" /> CONEXIÓN SEGURA
@@ -458,7 +499,7 @@ export default function App() {
         {!studentResult && (
           <div className="w-full max-w-sm md:max-w-md lg:max-w-lg flex flex-col items-center animate-fade-in-up">
             <div className="mb-8 md:mb-10 hover:scale-105 transition-transform duration-700 ease-out">
-              <img src={ASSETS.logoMain} alt="Seamos Genios Logo" className="w-40 md:w-56 lg:w-64 h-auto mx-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]" />
+              <img src={ASSETS.logoMain} alt="Seamos Genios Logo" className="w-48 md:w-64 lg:w-80 h-auto mx-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]" />
             </div>
             <div className="w-full bg-slate-900/60 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl ring-1 ring-white/5 relative overflow-hidden group">
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-colors duration-1000"></div>
