@@ -20,15 +20,19 @@ const ASSETS = {
   fondo: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aOtHLJ5xUNkB12hj_FONDO.svg",
   logoSmall: "https://images.prismic.io/seamosgenios2026/aMSzIWGNHVfTPKS1_logosg.png?auto=format,compress",
   logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg",
-  formsBaseUrl: "https://forms.gle/p1FnrAgDKcQkJDLw7", 
+  formsBaseUrlMath: "https://forms.gle/p1FnrAgDKcQkJDLw7", 
+  formsBaseUrlLC: "#", 
+  formsBaseUrlCC: "#",
+  formsBaseUrlCN: "#",
+  formsBaseUrlIN: "#",
 };
 
 const ASIGNATURAS = [
-  { id: 'math', name: 'Matemáticas', icon: <Activity size={20}/>, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', link: ASSETS.formsBaseUrl },
-  { id: 'lectura', name: 'Lectura Crítica', icon: <BookOpen size={20}/>, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', link: ASSETS.formsBaseUrl },
-  { id: 'sociales', name: 'Competencias Ciudadanas', icon: <Users size={20}/>, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', link: ASSETS.formsBaseUrl },
-  { id: 'naturales', name: 'Ciencias Naturales', icon: <Zap size={20}/>, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', link: ASSETS.formsBaseUrl },
-  { id: 'ingles', name: 'Inglés', icon: <Sparkles size={20}/>, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', link: ASSETS.formsBaseUrl },
+  { id: 'math', name: 'Matemáticas', icon: <Activity size={20}/>, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', link: ASSETS.formsBaseUrlMath },
+  { id: 'lectura', name: 'Lectura Crítica', icon: <BookOpen size={20}/>, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', link: ASSETS.formsBaseUrlLC },
+  { id: 'sociales', name: 'Competencias Ciudadanas', icon: <Users size={20}/>, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', link: ASSETS.formsBaseUrlCC },
+  { id: 'naturales', name: 'Ciencias Naturales', icon: <Zap size={20}/>, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', link: ASSETS.formsBaseUrlCN },
+  { id: 'ingles', name: 'Inglés', icon: <Sparkles size={20}/>, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', link: ASSETS.formsBaseUrlIN },
 ];
 
 const cleanId = (id) => (!id ? "" : id.toString().replace(/[^a-zA-Z0-9]/g, ""));
