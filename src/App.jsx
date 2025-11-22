@@ -3,7 +3,8 @@ import {
   AlertCircle, CheckCircle, Lock, Award, User, FileText, Key, 
   FolderOpen, FileSignature, X, Search, Edit, Trash2, Plus, Save, 
   LogOut, Database, Loader2, ExternalLink, Code, LayoutList, UploadCloud,
-  ArrowUpDown, Mail, Filter, Users, Ban, Sparkles, BookOpen, Zap, Activity
+  ArrowUpDown, Mail, Filter, Users, Ban, Sparkles, BookOpen, Zap, Activity,
+  PieChart // Icono para estadísticas
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -19,11 +20,9 @@ const ASSETS = {
   fondo: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aOtHLJ5xUNkB12hj_FONDO.svg",
   logoSmall: "https://images.prismic.io/seamosgenios2026/aMSzIWGNHVfTPKS1_logosg.png?auto=format,compress",
   logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg",
-  // Enlace general (fallback)
   formsBaseUrl: "https://forms.gle/p1FnrAgDKcQkJDLw7", 
 };
 
-// ASIGNATURAS PARA EL MODAL
 const ASIGNATURAS = [
   { id: 'math', name: 'Matemáticas', icon: <Activity size={20}/>, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', link: ASSETS.formsBaseUrl },
   { id: 'lectura', name: 'Lectura Crítica', icon: <BookOpen size={20}/>, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', link: ASSETS.formsBaseUrl },
@@ -32,7 +31,6 @@ const ASIGNATURAS = [
   { id: 'ingles', name: 'Inglés', icon: <Sparkles size={20}/>, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', link: ASSETS.formsBaseUrl },
 ];
 
-// Utilidades
 const cleanId = (id) => (!id ? "" : id.toString().replace(/[^a-zA-Z0-9]/g, ""));
 const utf8_to_b64 = (str) => window.btoa(unescape(encodeURIComponent(str)));
 
@@ -50,7 +48,7 @@ export default function App() {
   const [studentResult, setStudentResult] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [showSubjectModal, setShowSubjectModal] = useState(false); // Modal Asignaturas
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
 
   // --- ESTADOS ADMIN ---
   const [adminView, setAdminView] = useState('table');
@@ -75,7 +73,6 @@ export default function App() {
     fetchData();
   }, []);
 
-  // EFECTO ESTELA MOUSE
   const cursorRef = useRef(null);
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -104,13 +101,23 @@ export default function App() {
     }
   };
 
-  // --- ESTADÍSTICAS ADMIN ---
+  // --- ESTADÍSTICAS DINÁMICAS ---
+  // Esto detecta automáticamente TODOS los planes que existan en el JSON
+  const getPlanStats = () => {
+    const counts = {};
+    database.forEach(s => {
+      const plan = s.plan || 'Sin Plan';
+      counts[plan] = (counts[plan] || 0) + 1;
+    });
+    return counts;
+  };
+  const planStats = getPlanStats();
+
   const stats = {
     total: database.length,
     active: database.filter(s => s.estado === 'Activo').length,
     revoked: database.filter(s => s.estado === 'Revocado').length,
-    premium: database.filter(s => s.plan && s.plan.includes('Premium')).length,
-    basico: database.filter(s => s.plan && s.plan.includes('Básico')).length
+    ...planStats // Expande los conteos de planes dinámicamente
   };
 
   // --- LÓGICA ADMIN ---
@@ -164,10 +171,12 @@ export default function App() {
 
     let updatedDB;
     if (editingStudent) {
+      // Permitir editar ID: Si cambia el ID, verificamos que no choque con otro
       if (editingStudent.id !== newStudent.id && database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
          alert("¡Error! Ya existe otro estudiante con ese ID.");
          return;
       }
+      // Buscamos por referencia del objeto original para reemplazarlo
       updatedDB = database.map(s => s === editingStudent ? newStudent : s);
     } else {
       if (database.some(s => cleanId(s.id) === cleanId(newStudent.id))) {
@@ -218,19 +227,15 @@ export default function App() {
   const handleStudentVerify = (e) => {
     e.preventDefault();
     if (!formData.numeroDoc.trim()) return;
-    
-    // Puerta trasera Admin
     if (formData.numeroDoc.trim() === ADMIN_ACCESS_CODE) {
       setSearchLoading(true);
       setTimeout(() => { setSearchLoading(false); setViewMode('login'); setFormData({...formData, numeroDoc:''}); }, 1000);
       return;
     }
-
     setSearchLoading(true);
     setSearchError('');
     setStudentResult(null);
     const inputClean = cleanId(formData.numeroDoc);
-    
     setTimeout(() => {
       const found = database.find(s => cleanId(s.id) === inputClean);
       if (found) {
@@ -325,24 +330,20 @@ export default function App() {
         )}
 
         <main className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
-          {/* Estadísticas Mejoradas */}
+          {/* Estadísticas Mejoradas y Dinámicas */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 hover:border-blue-500/30 transition-colors">
               <div><p className="text-slate-400 text-[10px] uppercase font-bold">Total Estudiantes</p><p className="text-2xl font-bold text-white">{stats.total}</p></div>
               <Users className="text-blue-500" size={24} />
             </div>
-            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 hover:border-emerald-500/30 transition-colors">
-              <div><p className="text-slate-400 text-[10px] uppercase font-bold">Activos</p><p className="text-2xl font-bold text-emerald-400">{stats.active}</p></div>
-              <CheckCircle className="text-emerald-500" size={24} />
-            </div>
-            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 hover:border-purple-500/30 transition-colors">
-              <div><p className="text-slate-400 text-[10px] uppercase font-bold">Plan Premium</p><p className="text-2xl font-bold text-purple-400">{stats.premium}</p></div>
-              <Award className="text-purple-500" size={24} />
-            </div>
-            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 hover:border-cyan-500/30 transition-colors">
-              <div><p className="text-slate-400 text-[10px] uppercase font-bold">Plan Básico</p><p className="text-2xl font-bold text-cyan-400">{stats.basico}</p></div>
-              <FileText className="text-cyan-500" size={24} />
-            </div>
+            
+            {/* Renderizado Dinámico de Planes (Muestra cualquier plan que exista) */}
+            {Object.keys(planStats).map((planName, i) => (
+               <div key={i} className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 hover:border-purple-500/30 transition-colors">
+                  <div><p className="text-slate-400 text-[10px] uppercase font-bold">{planName}</p><p className="text-2xl font-bold text-purple-400">{planStats[planName]}</p></div>
+                  <Award className="text-purple-500" size={24} />
+               </div>
+            ))}
           </div>
 
           {adminView === 'table' && (
@@ -354,13 +355,12 @@ export default function App() {
                     <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-slate-200 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   
-                  {/* Filtro de Plan */}
+                  {/* Filtro de Plan Dinámico */}
                   <div className="relative min-w-[180px]">
                     <Filter className="absolute left-3 top-3 text-slate-500" size={18} />
                     <select value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl shadow-inner outline-none focus:border-cyan-500 text-slate-300 cursor-pointer appearance-none">
                       <option value="TODOS">Todos los Planes</option>
-                      <option value="Premium">Plan Premium</option>
-                      <option value="Básico">Plan Básico</option>
+                      {Object.keys(planStats).map(plan => <option key={plan} value={plan}>{plan}</option>)}
                     </select>
                   </div>
 
@@ -400,7 +400,7 @@ export default function App() {
                             <div className="text-slate-500 text-xs flex items-center gap-2">{s.email} <a href={`mailto:${s.email}`} className="text-blue-500 hover:text-blue-300"><Mail size={12}/></a></div>
                           </td>
                           <td className="p-4"><div className="flex items-center gap-2"><span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] border border-slate-700">{s.tipoDoc}</span><span className="font-mono text-cyan-300">{s.id}</span></div></td>
-                          <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${s.plan.includes('Premium') ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-blue-500/10 text-blue-300 border-blue-500/30'}`}>{s.plan}</span></td>
+                          <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border bg-slate-800 text-slate-300 border-slate-600`}>{s.plan}</span></td>
                           <td className="p-4"><span className={`flex items-center gap-1.5 text-xs font-bold ${s.estado === 'Activo' ? 'text-emerald-400' : 'text-red-400'}`}><span className={`w-1.5 h-1.5 rounded-full ${s.estado === 'Activo' ? 'bg-emerald-400' : 'bg-red-400'}`}></span>{s.estado}</span></td>
                           <td className="p-4 text-right"><div className="flex items-center justify-end gap-1"><button onClick={() => { setEditingStudent(s); setShowModal(true); }} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg" title="Editar"><Edit size={16} /></button><button onClick={() => handleLocalDelete(s)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg" title="Eliminar"><Trash2 size={16} /></button></div></td>
                         </tr>
@@ -437,7 +437,8 @@ export default function App() {
                   <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Tipo Doc</label><select name="tipoDoc" defaultValue={editingStudent?.tipoDoc || "T.I."} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>T.I.</option><option>C.C.</option><option>C.E.</option><option>PPT</option></select></div>
                   <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">ID (Sin Puntos)</label><input name="id" required defaultValue={editingStudent?.id} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-cyan-300 font-mono focus:border-cyan-500 outline-none" /></div>
                   <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Email</label><input name="email" type="email" required defaultValue={editingStudent?.email} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none" /></div>
-                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Plan</label><select name="plan" defaultValue={editingStudent?.plan || "Plan Básico"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>Plan Básico</option><option>Plan Premium</option></select></div>
+                  {/* CAMPO PLAN EDITABLE (TEXTO LIBRE O SELECTOR AMPLIADO) */}
+                  <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Plan</label><input name="plan" required defaultValue={editingStudent?.plan || "Plan Básico"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500" placeholder="Ej: Plan Intermedio" /></div>
                   <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Estado</label><select name="estado" defaultValue={editingStudent?.estado || "Activo"} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none"><option>Activo</option><option>Revocado</option><option>Pendiente</option></select></div>
                   <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Fecha Pago</label><input name="fechaPago" defaultValue={editingStudent?.fechaPago} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none" /></div>
                   <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">URL Carpeta</label><input name="url_carpeta" defaultValue={editingStudent?.url_carpeta} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-blue-400 text-xs outline-none" /></div>
