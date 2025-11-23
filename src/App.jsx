@@ -21,7 +21,7 @@ const ASSETS = {
   logoSmall: "https://images.prismic.io/seamosgenios2026/aMSzIWGNHVfTPKS1_logosg.png?auto=format,compress",
   logoMain: "https://seamosgenios2026.cdn.prismic.io/seamosgenios2026/aR95sGGnmrmGqF-o_ServicesLogo.svg",
   formsBaseUrlMath: "https://forms.gle/p1FnrAgDKcQkJDLw7", 
-  formsBaseUrlLC: "#", 
+  formsBaseUrlLC: "https://forms.gle/XpUPnTNPLQaB7Swc9", 
   formsBaseUrlCC: "#",
   formsBaseUrlCN: "#",
   formsBaseUrlIN: "#",
