@@ -6,11 +6,11 @@ export default defineConfig({
   // CORRECCIÓN FINAL: Cambiamos la base a una cadena vacía. 
   // Esto hace que Vite use la raíz del dominio, que es lo que Vercel necesita 
   // para encontrar los archivos JS/CSS y dejar de mostrar la pantalla blanca.
-  base: '', 
-  
+  base: '/credenciales-mini-1/',
+
   // ASEGURAR COMPATIBILIDAD CON FUNCIONES MODERNAS
   build: {
-    target: "esnext" 
+    target: "esnext"
   },
   esbuild: {
     target: "esnext"
